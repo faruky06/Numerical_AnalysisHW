@@ -22,22 +22,28 @@ struct f{
    long double operator() (long double x){
         return exp(-pow(x, 3)) - pow(x, 4) - sin(x);
    }
-   long double bisection(long double a, long double b){
-    f f; // defines function from struct
+   tuple<long double, int, int> bisection(long double a, long double b){
+    iterations = floating_point_operations = 0;
+    tuple<long double, int, int> bisection_return; 
     long double c = ((a + b) / 2.0);
-    if(abs(a - b) < 1 * pow(10, -10))
-        return c;
-    else if (f(c)*f(a) < 0)
-        return bisection(a, c);
-    else
-        return bisection(c, b);
+    while(!(abs(a-b) < 5e-5)){
+        c = ((a + b) / 2.0);
+        if((*this)(a) * (*this)(c) < 0)
+            b = c;
+        else
+            a = c; 
+        floating_point_operations += 3;
+        iterations++;
     }
+    bisection_return.t1 = ((a + b) / 2.0); bisection_return.t2 = floating_point_operations; bisection_return.t3 = iterations;
+    return bisection_return;
+   }
 
     tuple<long double, int, int> newton(long double init_guess){
         iterations = floating_point_operations = 0;
         tuple<long double, int, int> newton_return;
         long double x_n1 = init_guess - (((*this)(init_guess)) / df(init_guess));
-        while(!(abs((*this)(init_guess)) < (1 * pow(10, -6)))){
+        while(!(abs((*this)(init_guess)) < (5e-4))){
             init_guess = init_guess - (((*this)(init_guess)) / df(init_guess));
             floating_point_operations++;
             iterations++;
@@ -46,13 +52,19 @@ struct f{
         newton_return.t1 = init_guess; newton_return.t2 = floating_point_operations; newton_return.t3 = iterations; 
         return newton_return;
     }
-    long double secant(long double a, long double b){
+    tuple<long double, int, int> secant(long double a, long double b){
+        floating_point_operations = iterations = 0;
+        tuple<long double, int, int> secant_return;
         long double new_b = 0;
-        long double new_a = 0;
-        while(!((*this)(a) < 1e-6)){
-            
+        while(!(abs((*this)(a)) < 5e-4)){
+            new_b = a;
+            a = a - (*this)(a) / (((*this)(a) - (*this)(b)) / (a - b));
+            b = new_b; 
+            floating_point_operations += 5; // comparison, and 5 assignments
+            iterations++;
         }
-        return 0;
+        secant_return.t1 = a; secant_return.t2 = floating_point_operations; secant_return.t3 = iterations;
+        return secant_return;
     }
 
     tuple<long double, int, int> monte_carlo(long double lower, long double upper){
@@ -87,7 +99,7 @@ struct f{
             floating_point_operations_thread++;
             iterations_thread++;
             
-            if (abs((*this)(guess)) < 1e-6) {
+            if (abs((*this)(guess)) < 5e-4) {
                 #pragma omp atomic write
                 found_solution = true;
                 result = tuple<long double, int, int>(guess, floating_point_operations_thread, iterations_thread);
@@ -110,27 +122,36 @@ struct f{
 int main(){
     f f;
     tuple<long double, int, int> newton_return = f.newton(0);
+    tuple<long double, int, int> secant_return = f.secant(-1, 1);
+    tuple<long double, int, int> bisection_return = f.bisection(-1, 1);
     auto start_mcp = std::chrono::high_resolution_clock::now();
-    tuple<long double, int, int> mc_return_parallel = f.monte_carlo_parallel(-10, 5);
+    tuple<long double, int, int> mc_return_parallel = f.monte_carlo_parallel(0.5, 0.75);
     auto end_mcp = std::chrono::high_resolution_clock::now();
     auto start_mc = std::chrono::high_resolution_clock::now();
-    tuple<long double, int, int> mc_return = f.monte_carlo(-10, 5);
+    tuple<long double, int, int> mc_return = f.monte_carlo(0.5, 0.75);
     auto end_mc = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration_mc = (end_mc - start_mc);
     std::chrono::duration<double> duration_mcp = (end_mcp - start_mcp);
     long double time_per_op_mc = mc_return.t2 / duration_mc.count();
     long double time_per_op_mcp = mc_return.t2 / duration_mcp.count();
-    std::cout << "Bisection method with initial bracketing [-1, 1]: " << std::fixed << std::setprecision(16) << f.bisection(-1, 1) << std::endl
+    std::cout << "Bisection method with initial bracketing [-1, 1]: \n" << " Root:"<< std::fixed << std::setprecision(16) << bisection_return.t1 << std::endl
+    << "    floating point operations: " << bisection_return.t2 << std::endl
+    << "    iterations: " << bisection_return.t3 << std::endl
+
+    << "Secant method with initial points x0 = -1, x1 = 1: \n" << "   Root: " << secant_return.t1 << std::endl
+    << "    floating point operations: " << secant_return.t2 << std::endl
+    << "    iterations: " << secant_return.t3 << std::endl
+
     << "Newtons method with init guess x = 0: \n" << "    Root: " << newton_return.t1 << std::endl
     << "    floating point operations: " << newton_return.t2 << std::endl
 
     << "    iterations: " << newton_return.t3 << std::endl
-    << "Monte Carlo method in range [-10, 5]:\n" << "  Root: " << mc_return.t1 << std::endl
+    << "Monte Carlo method in range [0.5, 0.75]:\n" << "  Root: " << mc_return.t1 << std::endl
     << "    floating point operations: " << mc_return.t2 << std::endl
     << "    iterations: " << mc_return.t3 << std::endl
     << "    operations/second: " << time_per_op_mc << std::endl
 
-    << "Monte Carlo parallel method in range [-10, 5]:\n" << "  Root: " << mc_return_parallel.t1 << std::endl
+    << "Monte Carlo parallel method in range [0.5, 0.75]:\n" << "  Root: " << mc_return_parallel.t1 << std::endl
     << "    floating point operations: " << mc_return_parallel.t2 << std::endl
     << "    iterations: " << mc_return_parallel.t3 << std::endl
     << "    operations/second: " << time_per_op_mcp;
