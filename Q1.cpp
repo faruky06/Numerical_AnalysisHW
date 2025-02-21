@@ -2,7 +2,7 @@
 #include<cmath>
 #include<iomanip>
 #include<random>
-#include<omp.h>
+//#include<omp.h>
 template<typename T1, typename T2, typename T3> //to encapsulate the root, iterations and fp operations
 struct tuple{
     T1 t1;
@@ -98,6 +98,7 @@ struct f{
     * Runs previous Monte Carlo algorithm with however many threads the program has access to
     * Stops when a thread finds a solution within the acceptable threshold
     */
+   /*
     tuple<long double, int, int> monte_carlo_parallel(long double lower, long double upper){
         bool found_solution = false;
         floating_point_operations = iterations = 0;
@@ -135,6 +136,7 @@ struct f{
     result.t3 = iterations;  // total iterations
     return result;
     }
+    */
 };
 int main(){
     f f;
@@ -147,18 +149,20 @@ int main(){
 
     //keep track of runtime of parallel vs non parallel method, purely for personal use
     // has nothing to do with assignment, ignore parallel method.
+    /*
     auto start_mcp = std::chrono::high_resolution_clock::now();
     tuple<long double, int, int> mc_return_parallel = f.monte_carlo_parallel(0.5, 0.75);
     auto end_mcp = std::chrono::high_resolution_clock::now();
+    */
 
     auto start_mc = std::chrono::high_resolution_clock::now();
     tuple<long double, int, int> mc_return = f.monte_carlo(0.5, 0.75);
     auto end_mc = std::chrono::high_resolution_clock::now();
 
     std::chrono::duration<double> duration_mc = (end_mc - start_mc);
-    std::chrono::duration<double> duration_mcp = (end_mcp - start_mcp);
+   //std::chrono::duration<double> duration_mcp = (end_mcp - start_mcp);
     long double time_per_op_mc = mc_return.t2 / duration_mc.count();
-    long double time_per_op_mcp = mc_return_parallel.t2 / duration_mcp.count();
+    //long double time_per_op_mcp = mc_return_parallel.t2 / duration_mcp.count();
 
     std::cout << "Bisection method with initial bracketing [-1, 1]: \n" << "        Root:"<< std::fixed << std::setprecision(8) << bisection_return.t1 << std::endl
     << "        floating point operations: " << bisection_return.t2 << std::endl
@@ -177,8 +181,10 @@ int main(){
     << "        iterations: " << mc_return.t3 << std::endl
     << "        operations/second: " << time_per_op_mc << std::endl
 
+    /*
     << "Monte Carlo parallel method in range [0.5, 0.75]:\n" << "       Root: " << mc_return_parallel.t1 << std::endl
     << "        floating point operations: " << mc_return_parallel.t2 << std::endl
     << "        iterations: " << mc_return_parallel.t3 << std::endl
     << "        operations/second: " << time_per_op_mcp;
+    */
 }
