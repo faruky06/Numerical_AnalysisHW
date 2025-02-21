@@ -31,7 +31,7 @@ struct f{
     iterations = floating_point_operations = 0;
     tuple<long double, int, int> bisection_return; 
     long double c = ((a + b) / 2.0);
-    while(!(abs(a-b) < 5e-5)){
+    while(!(abs(a-b) < 5e-6)){
         c = ((a + b) / 2.0);
         if((*this)(a) * (*this)(c) < 0)
             b = c;
@@ -47,12 +47,12 @@ struct f{
     *Newton's method given an initial guess, finds root within threshold
     */
     tuple<long double, int, int> newton(long double init_guess){
-        iterations = floating_point_operations = 0;
+        iterations = 0; floating_point_operations = 3;
         tuple<long double, int, int> newton_return;
-        long double x_n1 = init_guess - (((*this)(init_guess)) / df(init_guess));
-        while(!(abs((*this)(init_guess)) < (5e-4))){
+        long double x_n1 = init_guess - (((*this)(init_guess)) / df(init_guess)); //3 floating point operations
+        while(!(abs((*this)(init_guess)) < (5e-6))){ //one evaluation of function is floating point operation
             init_guess = init_guess - (((*this)(init_guess)) / df(init_guess));
-            floating_point_operations++;
+            floating_point_operations += 4;
             iterations++;
         }
         //assign values into tuple
@@ -66,11 +66,11 @@ struct f{
         floating_point_operations = iterations = 0;
         tuple<long double, int, int> secant_return;
         long double new_b = 0;
-        while(!(abs((*this)(a)) < 5e-6)){
+        while(!(abs((*this)(a)) < 5e-6)){ //evaluation of function is a floating point operation
             new_b = a;
-            a = a - (*this)(a) / (((*this)(a) - (*this)(b)) / (a - b));
+            a = a - (*this)(a) / (((*this)(a) - (*this)(b)) / (a - b)); // 8 operations evaluation of 3 functions, 2 divisions and 3 subtractions
             b = new_b; 
-            floating_point_operations += 5; // comparison, and 5 assignments
+            floating_point_operations += 9; 
             iterations++;
         }
         secant_return.t1 = a; secant_return.t2 = floating_point_operations; secant_return.t3 = iterations;
@@ -89,9 +89,9 @@ struct f{
         while(!(abs((*this)(guess)) < 5e-6)){
             guess = dist(rd);
             iterations++;
-            floating_point_operations++;
+            floating_point_operations += 2; // evaluation of function and generation of random number
         }
-            mc_return.t1 = guess; mc_return.t2 = floating_point_operations; mc_return.t3 = iterations;
+            mc_return.t1 = guess, mc_return.t2 = floating_point_operations, mc_return.t3 = iterations;
             return mc_return;
     }
     /*
@@ -113,7 +113,7 @@ struct f{
         long double guess = dist(rd); //random guess
         while (!found_solution) { //if another thread has not found a solution execute code 
             guess = dist(rd);
-            floating_point_operations_thread++;
+            floating_point_operations_thread += 2;
             iterations_thread++;
             
             if (abs((*this)(guess)) < 5e-6) {
@@ -145,6 +145,8 @@ int main(){
     tuple<long double, int, int> secant_return = f.secant(-1, 1);
     tuple<long double, int, int> bisection_return = f.bisection(-1, 1);
 
+    //keep track of runtime of parallel vs non parallel method, purely for personal use
+    // has nothing to do with assignment, ignore parallel method.
     auto start_mcp = std::chrono::high_resolution_clock::now();
     tuple<long double, int, int> mc_return_parallel = f.monte_carlo_parallel(0.5, 0.75);
     auto end_mcp = std::chrono::high_resolution_clock::now();
@@ -156,27 +158,27 @@ int main(){
     std::chrono::duration<double> duration_mc = (end_mc - start_mc);
     std::chrono::duration<double> duration_mcp = (end_mcp - start_mcp);
     long double time_per_op_mc = mc_return.t2 / duration_mc.count();
-    long double time_per_op_mcp = mc_return.t2 / duration_mcp.count();
+    long double time_per_op_mcp = mc_return_parallel.t2 / duration_mcp.count();
 
-    std::cout << "Bisection method with initial bracketing [-1, 1]: \n" << " Root:"<< std::fixed << std::setprecision(16) << bisection_return.t1 << std::endl
-    << "    floating point operations: " << bisection_return.t2 << std::endl
-    << "    iterations: " << bisection_return.t3 << std::endl
+    std::cout << "Bisection method with initial bracketing [-1, 1]: \n" << "        Root:"<< std::fixed << std::setprecision(8) << bisection_return.t1 << std::endl
+    << "        floating point operations: " << bisection_return.t2 << std::endl
+    << "        iterations: " << bisection_return.t3 << std::endl
 
-    << "Secant method with initial points x0 = -1, x1 = 1: \n" << "   Root: " << secant_return.t1 << std::endl
-    << "    floating point operations: " << secant_return.t2 << std::endl
-    << "    iterations: " << secant_return.t3 << std::endl
+    << "Secant method with initial points x0 = -1, x1 = 1: \n" << "     Root: " << secant_return.t1 << std::endl
+    << "        floating point operations: " << secant_return.t2 << std::endl
+    << "        iterations: " << secant_return.t3 << std::endl
 
-    << "Newtons method with init guess x = 0: \n" << "    Root: " << newton_return.t1 << std::endl
-    << "    floating point operations: " << newton_return.t2 << std::endl
+    << "Newtons method with init guess x = 0: \n" << "      Root: " << newton_return.t1 << std::endl
+    << "        floating point operations: " << newton_return.t2 << std::endl
+    << "        iterations: " << newton_return.t3 << std::endl
 
-    << "    iterations: " << newton_return.t3 << std::endl
-    << "Monte Carlo method in range [0.5, 0.75]:\n" << "  Root: " << mc_return.t1 << std::endl
-    << "    floating point operations: " << mc_return.t2 << std::endl
-    << "    iterations: " << mc_return.t3 << std::endl
-    << "    operations/second: " << time_per_op_mc << std::endl
+    << "Monte Carlo method in range [0.5, 0.75]:\n" << "        Root: " << mc_return.t1 << std::endl
+    << "        floating point operations: " << mc_return.t2 << std::endl
+    << "        iterations: " << mc_return.t3 << std::endl
+    << "        operations/second: " << time_per_op_mc << std::endl
 
-    << "Monte Carlo parallel method in range [0.5, 0.75]:\n" << "  Root: " << mc_return_parallel.t1 << std::endl
-    << "    floating point operations: " << mc_return_parallel.t2 << std::endl
-    << "    iterations: " << mc_return_parallel.t3 << std::endl
-    << "    operations/second: " << time_per_op_mcp;
+    << "Monte Carlo parallel method in range [0.5, 0.75]:\n" << "       Root: " << mc_return_parallel.t1 << std::endl
+    << "        floating point operations: " << mc_return_parallel.t2 << std::endl
+    << "        iterations: " << mc_return_parallel.t3 << std::endl
+    << "        operations/second: " << time_per_op_mcp;
 }
