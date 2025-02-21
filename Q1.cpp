@@ -146,11 +146,11 @@ int main(){
     tuple<long double, int, int> bisection_return = f.bisection(-1, 1);
 
     auto start_mcp = std::chrono::high_resolution_clock::now();
-    tuple<long double, int, int> mc_return_parallel = f.monte_carlo_parallel(-10, 10);
+    tuple<long double, int, int> mc_return_parallel = f.monte_carlo_parallel(0.5, 0.75);
     auto end_mcp = std::chrono::high_resolution_clock::now();
 
     auto start_mc = std::chrono::high_resolution_clock::now();
-    tuple<long double, int, int> mc_return = f.monte_carlo(-10, 10);
+    tuple<long double, int, int> mc_return = f.monte_carlo(0.5, 0.75);
     auto end_mc = std::chrono::high_resolution_clock::now();
 
     std::chrono::duration<double> duration_mc = (end_mc - start_mc);
